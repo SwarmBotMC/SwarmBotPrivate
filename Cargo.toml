@@ -117,9 +117,12 @@ tokio-stream = "0.1.11"
 enum-map = "2.4"
 
 [dev-dependencies]
+tempdir = "0.3.7"
 assert_matches = "1.5"
 more-asserts = "0.3"
 primes = "0.3"
+fs_extra = "1.2"
+
 
 [workspace]
 members = ["packets", "interfaces", "swarmbot-cli"]

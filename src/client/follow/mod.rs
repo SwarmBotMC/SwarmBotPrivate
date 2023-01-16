@@ -167,7 +167,7 @@ impl Follower {
         self.ticks = 0;
     }
 
-    /// if we should recalcualte the path
+    /// if we should recalculate the path
     pub fn should_recalc(&mut self) -> bool {
         // we should only recalc if this is not complete
         if self.complete {
@@ -336,7 +336,7 @@ mod tests {
     };
 
     use anyhow::Context;
-    use interfaces::types::BlockLocation;
+    use interfaces::types::{BlockLocation, SimpleType};
     use more_asserts::assert_lt;
 
     use crate::{
@@ -404,9 +404,7 @@ mod tests {
 
         local_state.physics.teleport(start.center_bottom());
 
-        while let Result::InProgress =
-            follower.follow_iteration(&mut local_state, &mut global_state)
-        {
+        while follower.follow_iteration(&mut local_state, &mut global_state) == Result::InProgress {
             local_state
                 .physics
                 .tick(&mut global_state.blocks, &PlayerInventory::default());
@@ -463,19 +461,32 @@ mod tests {
             local_state.physics.location()
         );
 
+        let locations = result.value.iter().map(|record| record.state.location);
+        let len = locations.len();
+
+        for (i, loc) in locations.enumerate() {
+            assert_eq!(loc.y, 1, "location {loc} from the follower locations has a y != 1. This is the {i}th coordinate");
+
+            let below = {
+                let mut loc = loc.clone();
+                loc.y = 0;
+                loc
+            };
+
+            assert_eq!(global_state.blocks.get_block_simple(below), Some(SimpleType::Solid), "block in path at {loc} is walkthrough");
+        }
+
         let mut follower = Follower::new(result).unwrap();
 
         local_state.physics.teleport(start.center_bottom());
 
-        while let Result::InProgress =
-            follower.follow_iteration(&mut local_state, &mut global_state)
-        {
+        while follower.follow_iteration(&mut local_state, &mut global_state) == Result::InProgress {
             local_state
                 .physics
                 .tick(&mut global_state.blocks, &local_state.inventory);
             assert!(
                 local_state.physics.location().y >= 0.0,
-                "the player fell... location was {} front was {:?} left {}",
+                "the player fell... location was {} front was {:?} left {}/{len}",
                 local_state.physics.location(),
                 follower.xs.front(),
                 follower.xs.len()

@@ -51,7 +51,7 @@ impl<'a> Movements<'a> {
         self.current_multiplier *= amount;
     }
 
-    /// get a location relative to the start of the moveemnt
+    /// get a location relative to the start of the movement
     fn loc(&self, dx: i32, dy: i16, dz: i32) -> BlockLocation {
         let BlockLocation { x, y, z } = self.on();
         BlockLocation::new(x + dx, y + dy, z + dz)
