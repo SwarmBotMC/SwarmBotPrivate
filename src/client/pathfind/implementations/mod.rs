@@ -13,14 +13,20 @@ use crate::client::{
 
 pub mod no_vehicle;
 
+/// A problem that can be solved via BFS
 pub trait Problem: Send + Sync {
+    /// A node
     type Node: Node;
+
+    /// Try to find a solution until `time`
     fn iterate_until(
         &mut self,
         time: Instant,
         local: &mut LocalState,
         global: &GlobalState,
     ) -> Increment<PathResult<<Self::Node as Node>::Record>>;
+
+    /// recalculate given our new start is `context`
     fn recalc(&mut self, context: Self::Node);
 }
 
@@ -48,14 +54,14 @@ impl<H: Heuristic<MoveNode> + Send + Sync, G: GoalCheck<MoveNode> + Send + Sync>
     }
 }
 
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 struct GenericProgressor<'a> {
     ctx: GlobalContext<'a>,
 }
 
 impl Progressor<MoveNode> for GenericProgressor<'_> {
     fn progressions(&self, location: &MoveNode) -> Progression<MoveNode> {
-        Movements::obtain_all(location, &self.ctx)
+        Movements::new(location, self.ctx).obtain_all()
     }
 }
 

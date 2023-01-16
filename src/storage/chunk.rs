@@ -297,10 +297,10 @@ impl Palette {
                                 let start_offset = (block_number * required_bits) % 64;
                                 let end_long = ((block_number + 1) * required_bits - 1) / 64;
 
-                                let value = match reverse_map.as_ref() {
-                                    None => u64::from(state.0),
-                                    Some(reverse_map) => *reverse_map.get(&state).unwrap() as u64,
-                                };
+                                let value = reverse_map.as_ref().map_or_else(
+                                    || u64::from(state.0),
+                                    |reverse_map| *reverse_map.get(&state).unwrap() as u64,
+                                );
 
                                 let value = value & indv_value_mask;
 
@@ -366,12 +366,10 @@ impl Palette {
 
         let data = data & indv_value_mask;
 
-        match &self.id_to_state {
-            None => BlockState(data),
-            Some(map) => *map
-                .get(data as usize)
-                .expect("internal chunk error getting block state"),
-        }
+        self.id_to_state.as_ref().map_or(BlockState(data), |map| {
+            *map.get(data as usize)
+                .expect("internal chunk error getting block state")
+        })
     }
 
     fn get_block(&self, x: u8, y: u8, z: u8) -> BlockState {
@@ -458,18 +456,16 @@ impl Column {
 
         match self {
             Self::LowMemory { data: sections } => {
-                let section = &sections.sections[section_idx];
-                BlockApprox::Estimate(match section {
-                    None => SimpleType::WalkThrough,
-                    Some(section) => section.get_simple_type(x, y_offset, z),
-                })
+                let section = sections.sections[section_idx].as_deref();
+                BlockApprox::Estimate(section.map_or(SimpleType::WalkThrough, |section| {
+                    section.get_simple_type(x, y_offset, z)
+                }))
             }
             Self::HighMemory { data: sections } => {
-                let section = &sections.sections[section_idx];
-                BlockApprox::Realized(match section {
-                    None => BlockState(0),
-                    Some(section) => section.palette.get_block(x, y_offset, z),
-                })
+                let section = sections.sections[section_idx].as_deref();
+                BlockApprox::Realized(section.map_or_else(BlockState::default, |section| {
+                    section.palette.get_block(x, y_offset, z)
+                }))
             }
         }
     }

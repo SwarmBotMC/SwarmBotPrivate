@@ -47,9 +47,8 @@ impl TaskTrait for CompoundTask {
     }
 
     fn expensive(&mut self, end_at: Instant, local: &mut LocalState, global: &GlobalState) {
-        match self.tasks.front_mut() {
-            None => {}
-            Some(res) => res.expensive(end_at, local, global),
-        };
+        self.tasks
+            .front_mut()
+            .map_or((), |res| res.expensive(end_at, local, global));
     }
 }

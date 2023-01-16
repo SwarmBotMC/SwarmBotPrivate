@@ -1,3 +1,4 @@
+use enum_map::EnumMap;
 use interfaces::types::{
     BlockLocation, Change, SimpleType,
     SimpleType::{Avoid, Solid, WalkThrough, Water},
@@ -5,7 +6,7 @@ use interfaces::types::{
 
 use crate::{
     client::pathfind::{
-        context::{GlobalContext, MoveNode},
+        context::{Costs, GlobalContext, MoveNode},
         moves::centered_arr::CenteredArray,
         traits::{Neighbor, Progression},
     },
@@ -28,120 +29,198 @@ impl Default for State {
     }
 }
 
-pub struct Movements;
+pub struct Movements<'a> {
+    on: &'a MoveNode,
+    ctx: GlobalContext<'a>,
+    current_multiplier: f64,
+}
 
-impl Movements {
-    pub fn obtain_all(on: &MoveNode, ctx: &GlobalContext) -> Progression<MoveNode> {
-        let BlockLocation { x, y, z } = on.location;
-        let w = ctx.world;
+struct Edge;
 
-        macro_rules! get_block {
-            ($x:expr, $y:expr, $z:expr) => {{
-                let res: Option<SimpleType> = w.get_block_simple(BlockLocation::new($x, $y, $z));
-                res
-            }};
+impl<'a> Movements<'a> {
+    pub const fn new(on: &'a MoveNode, ctx: GlobalContext<'a>) -> Self {
+        Self {
+            on,
+            ctx,
+            current_multiplier: 1.0,
+        }
+    }
+
+    /// increase the cost multiplier by the set amount
+    fn multiply_all_costs_by(&mut self, amount: f64) {
+        self.current_multiplier *= amount;
+    }
+
+    /// get a location relative to the start of the moveemnt
+    fn loc(&self, dx: i32, dy: i16, dz: i32) -> BlockLocation {
+        let BlockLocation { x, y, z } = self.on();
+        BlockLocation::new(x + dx, y + dy, z + dz)
+    }
+
+    fn move_node(&self) -> MoveNode {
+        MoveNode::from(self.on)
+    }
+
+    fn wrap(&self, dx: i32, dy: i16, dz: i32) -> MoveNode {
+        let loc = self.loc(dx, dy, dz);
+        let mut node = MoveNode::from(self.on);
+        node.location = loc;
+        node
+    }
+
+    ///
+    const fn on(&self) -> BlockLocation {
+        self.on.location
+    }
+
+    /// get the cost when factoring in the current multiplier
+    #[inline]
+    fn cost_of(&self, f: impl FnOnce(&Costs) -> f64) -> f64 {
+        f(&self.ctx.path_config.costs) * self.current_multiplier
+    }
+
+    #[inline]
+    const fn costs(&self) -> &Costs {
+        &self.ctx.path_config.costs
+    }
+
+    /// get a block relative to the start of the [`Movements`]
+    fn get_block(&self, dx: i32, dy: i16, dz: i32) -> Result<SimpleType, Edge> {
+        let BlockLocation { x, y, z } = self.on();
+        let loc = BlockLocation::new(x + dx, y + dy, z + dz);
+        self.ctx.world.get_block_simple(loc).ok_or(Edge)
+    }
+
+    /// see which y we would reach if we dropped at a certain location. If we
+    /// could not access blocks properly, return [`Edge`].
+    fn drop_y(start: BlockLocation, world: &WorldBlocks) -> Result<Option<i16>, Edge> {
+        let BlockLocation { x, y: init_y, z } = start;
+
+        // only falling we could do would be into the void
+        if init_y < 2 {
+            return Ok(None);
         }
 
-        macro_rules! wrap {
-            ($block_loc:expr) => {{
-                let mut node = MoveNode::from(&on);
-                node.location = $block_loc;
-                node
-            }};
-        }
-
-        let (head, multiplier) = match get_block!(x, y + 1, z) {
-            None => return Progression::Edge,
-            Some(inner) => {
-                // we do not like our head in water (breathing is nice)
-                let multiplier = if inner == Water {
-                    ctx.path_config.costs.no_breathe_mult
-                } else {
-                    1.0
-                };
-                (inner, multiplier)
+        let mut travelled = 1;
+        for y in (0..=(init_y - 2)).rev() {
+            let loc = BlockLocation::new(x, y, z);
+            let block_type = world.get_block_simple(loc).ok_or(Edge)?;
+            match block_type {
+                Solid => return Ok((travelled <= MAX_FALL).then_some(y)),
+                Water => return Ok(Some(y)),
+                Avoid => return Ok(None),
+                WalkThrough => {}
             }
-        };
 
-        // cache adjacent leg block types
-        let mut adj_legs = [WalkThrough; 4];
-        let mut adj_head = [WalkThrough; 4];
+            travelled += 1;
+        }
+
+        Ok(None)
+    }
+
+    fn check_head(&mut self) -> Result<SimpleType, Edge> {
+        // our current head block
+        let head = self.get_block(0, 1, 0)?;
+
+        if head == Water {
+            self.multiply_all_costs_by(self.costs().no_breathe_mult);
+        }
+
+        Ok(head)
+    }
+
+    pub fn obtain_all(self) -> Progression<MoveNode> {
+        match self.obtain_all_internal() {
+            Ok(elem) => Progression::Movements(elem),
+            Err(Edge) => Progression::Edge,
+        }
+    }
+
+    fn obtain_all_internal(mut self) -> Result<Vec<Neighbor<MoveNode>>, Edge> {
+        let head = self.check_head()?;
 
         // if adj_legs && adj_head is true for any idx
-        let mut can_move_adj_noplace = [false; 4];
+        let mut can_move_adj_no_place = EnumMap::default();
 
-        for (idx, direction) in CardinalDirection::ALL.iter().enumerate() {
-            let Change { dx, dz, .. } = direction.unit_change();
+        // cache adjacent leg block types
+        let mut adj_legs = EnumMap::default();
+        let mut adj_head = EnumMap::default();
 
-            let legs = get_block!(x + dx, y, z + dz);
-            let head = get_block!(x + dx, y + 1, z + dz);
+        for dir in CardinalDirection::iter() {
+            let Change { dx, dz, .. } = dir.unit_change();
 
-            match (legs, head) {
-                (Some(legs), Some(head)) => {
-                    adj_legs[idx] = legs;
-                    adj_head[idx] = head;
-                    can_move_adj_noplace[idx] =
-                        matches!(legs, WalkThrough | Water) && matches!(head, WalkThrough | Water);
-                }
-                _ => return Progression::Edge,
-            };
+            let legs = self.get_block(dx, 0, dz)?;
+            adj_legs[dir] = legs;
+
+            let head = self.get_block(dx, 1, dz)?;
+            adj_head[dir] = head;
+
+            can_move_adj_no_place[dir] =
+                matches!(legs, WalkThrough | Water) && matches!(head, WalkThrough | Water);
         }
 
         // what we are going to turn for progressions
         let mut res = vec![];
 
-        let mut traverse_possible_no_place = [false; 4];
+        let mut traverse_possible_no_place = EnumMap::default();
 
         // moving adjacent without changing elevation
-        for (idx, direction) in CardinalDirection::ALL.iter().enumerate() {
-            let Change { dx, dz, .. } = direction.unit_change();
-            if can_move_adj_noplace[idx] {
-                let floor = get_block!(x + dx, y - 1, z + dz).unwrap();
-                let walkable = floor == Solid || adj_legs[idx] == Water || adj_head[idx] == Water;
-                traverse_possible_no_place[idx] = walkable;
+        for dir in CardinalDirection::iter() {
+            let Change { dx, dz, .. } = dir.unit_change();
+
+            // we are only looking at the locations that we can walk through
+            if can_move_adj_no_place[dir] {
+                let floor = self.get_block(dx, 1, dz)?;
+                let walkable = floor == Solid || adj_legs[dir] == Water || adj_head[dir] == Water;
+                traverse_possible_no_place[dir] = walkable;
                 if walkable {
                     res.push(Neighbor {
-                        value: wrap!(BlockLocation::new(x + dx, y, z + dz)),
-                        cost: ctx.path_config.costs.block_walk * multiplier,
+                        value: self.wrap(dx, 0, dz),
+                        cost: self.cost_of(|c| c.block_walk),
                     });
                 }
             }
         }
 
         // descending adjacent
-        for (idx, direction) in CardinalDirection::ALL.iter().enumerate() {
-            let Change { dx, dz, .. } = direction.unit_change();
+        for dir in CardinalDirection::iter() {
+            let Change { dx, dz, .. } = dir.unit_change();
 
-            let floor = get_block!(x + dx, y - 1, z + dz).unwrap();
-            if can_move_adj_noplace[idx] && !traverse_possible_no_place[idx] && floor != Avoid {
-                let start = BlockLocation::new(x + dx, y, z + dz);
-                let collided_y = drop_y(start, w);
+            let floor = self.get_block(dx, -1, dz)?;
+
+            if can_move_adj_no_place[dir] && !traverse_possible_no_place[dir] && floor != Avoid {
+                let start = self.loc(dx, 0, dz);
+                let collided_y = Self::drop_y(start, self.ctx.world)?;
                 if let Some(collided_y) = collided_y {
-                    let new_pos = BlockLocation::new(x + dx, collided_y + 1, z + dz);
+                    let mut new_pos = self.loc(dx, 0, dz);
+                    new_pos.y = collided_y + 1;
+
+                    let mut value = self.move_node();
+                    value.location = new_pos;
 
                     res.push(Neighbor {
-                        value: wrap!(new_pos),
-                        cost: ctx.path_config.costs.fall * multiplier,
+                        value,
+                        cost: self.cost_of(|c| c.fall),
                     });
                 }
             }
         }
 
-        let above = get_block!(x, y + 2, z).unwrap();
-        let floor = get_block!(x, y - 1, z).unwrap();
-        let feet = get_block!(x, y, z).unwrap();
+        let above = self.get_block(0, 2, 0)?;
+        let floor = self.get_block(0, -1, 0)?;
+        let feet = self.get_block(0, 0, 0)?;
 
         if above == Water || head == Water && above == WalkThrough {
             res.push(Neighbor {
-                value: wrap!(BlockLocation::new(x, y + 1, z)),
-                cost: ctx.path_config.costs.ascend * multiplier,
+                value: self.wrap(0, 1, 0),
+                cost: self.cost_of(|c| c.ascend),
             });
         }
 
         if floor == Water || (floor == WalkThrough && head == Water) {
             res.push(Neighbor {
-                value: wrap!(BlockLocation::new(x, y - 1, z)),
-                cost: ctx.path_config.costs.ascend * multiplier,
+                value: self.wrap(0, -1, 0),
+                cost: self.cost_of(|c| c.ascend),
             });
         }
 
@@ -149,22 +228,19 @@ impl Movements {
 
         if can_micro_jump {
             // ascending adjacent
-            for (idx, direction) in CardinalDirection::ALL.iter().enumerate() {
-                let Change { dx, dz, .. } = direction.unit_change();
+            for dir in CardinalDirection::iter() {
+                let Change { dx, dz, .. } = dir.unit_change();
 
                 // we can only move if we couldn't move adjacent without changing elevation
-                if !can_move_adj_noplace[idx] {
-                    let adj_above = matches!(
-                        get_block!(x + dx, y + 2, z + dz).unwrap(),
-                        WalkThrough | Water
-                    );
+                if !can_move_adj_no_place[dir] {
+                    let adj_above = matches!(self.get_block(dx, 2, dz)?, WalkThrough | Water);
                     let can_jump = adj_above
-                        && adj_legs[idx] == Solid
-                        && matches!(adj_head[idx], WalkThrough | Water);
+                        && adj_legs[dir] == Solid
+                        && matches!(adj_head[dir], WalkThrough | Water);
                     if can_jump {
                         res.push(Neighbor {
-                            value: wrap!(BlockLocation::new(x + dx, y + 1, z + dz)),
-                            cost: ctx.path_config.costs.ascend * multiplier,
+                            value: self.wrap(dx, 1, dz),
+                            cost: self.cost_of(|c| c.ascend),
                         });
                     }
                 }
@@ -182,27 +258,19 @@ impl Movements {
 
             // let mut not_jumpable = SmallVec::<[_; RADIUS_S * RADIUS_S]>::new();
             let mut not_jumpable = Vec::new();
-            let mut edge = false;
 
-            'check_loop: for dx in -RADIUS..=RADIUS {
+            for dx in -RADIUS..=RADIUS {
                 for dz in -RADIUS..=RADIUS {
-                    let adj_above = get_block!(x + dx, y + 2, z + dz);
-                    if adj_above.is_none() {
-                        edge = true;
-                        break 'check_loop;
-                    }
+                    let adj_above = self.get_block(dx, 2, dz)?;
 
-                    let adj_above = adj_above.unwrap() == WalkThrough;
-                    let adj_head = get_block!(x + dx, y + 1, z + dz).unwrap() == WalkThrough;
-                    let adj_feet = get_block!(x + dx, y, z + dz).unwrap() == WalkThrough;
+                    let adj_above = adj_above == WalkThrough;
+                    let adj_head = self.get_block(dx, 1, dz)? == WalkThrough;
+                    let adj_feet = self.get_block(dx, 0, dz)? == WalkThrough;
+
                     if !(adj_above && adj_head && adj_feet) {
                         not_jumpable.push((dx, dz));
                     }
                 }
-            }
-
-            if edge {
-                return Progression::Edge;
             }
 
             let mut open = CenteredArray::init::<_, RADIUS_S>();
@@ -255,7 +323,7 @@ impl Movements {
                 for dz in -RADIUS..=RADIUS {
                     let is_open = open[(dx, dz)] == State::Open;
 
-                    let same_y = get_block!(x + dx, y - 1, z + dz).unwrap();
+                    let same_y = self.get_block(dx, -1, dz)?;
 
                     let same_y_possible = same_y == Solid;
 
@@ -269,50 +337,19 @@ impl Movements {
                         && is_open
                     {
                         res.push(Neighbor {
-                            value: wrap!(BlockLocation::new(x + dx, y, z + dz)),
-                            cost: ctx.path_config.costs.block_parkour * multiplier,
+                            value: self.wrap(dx, 0, dz),
+                            cost: self.cost_of(|c| c.block_parkour),
                         });
                     }
                 }
             }
         }
 
-        Progression::Movements(res)
+        Ok(res)
     }
 }
 
-fn drop_y(start: BlockLocation, world: &WorldBlocks) -> Option<i16> {
-    let BlockLocation { x, y: init_y, z } = start;
-
-    // only falling we could do would be into the void
-    if init_y < 2 {
-        return None;
-    }
-
-    let mut travelled = 1;
-    for y in (0..=(init_y - 2)).rev() {
-        let loc = BlockLocation::new(x, y, z);
-        let block_type = world.get_block_simple(loc).unwrap();
-        match block_type {
-            SimpleType::Solid => {
-                return (travelled <= MAX_FALL).then_some(y);
-            }
-            SimpleType::Water => {
-                return Some(y);
-            }
-            SimpleType::Avoid => {
-                return None;
-            }
-            SimpleType::WalkThrough => {}
-        }
-
-        travelled += 1;
-    }
-
-    None
-}
-
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, enum_map::Enum)]
 pub enum CardinalDirection {
     North,
     South,
@@ -321,6 +358,10 @@ pub enum CardinalDirection {
 }
 
 impl CardinalDirection {
+    fn iter() -> impl Iterator<Item = Self> {
+        Self::ALL.into_iter()
+    }
+
     pub const ALL: [Self; 4] = {
         use CardinalDirection::{East, North, South, West};
         [North, South, East, West]

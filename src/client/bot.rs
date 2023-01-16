@@ -229,7 +229,7 @@ pub fn process_command(
 
                 local.physics.look_at(faces[best_loc_idx]);
                 out.use_item();
-                out.place_block(location, Face::from(best_loc_idx as u8));
+                out.place_block(location, Face::try_from(best_loc_idx as u8).unwrap());
             }
         }
         // "mine" => {

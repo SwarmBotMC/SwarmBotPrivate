@@ -114,6 +114,7 @@ bincode = "2.0.0-alpha.2"
 hex-literal = "0.3.4"
 cfb8 = "0.7"
 tokio-stream = "0.1.11"
+enum-map = "2.4"
 
 [dev-dependencies]
 assert_matches = "1.5"

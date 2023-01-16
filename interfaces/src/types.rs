@@ -1004,11 +1004,13 @@ impl BlockApprox {
     }
 }
 
-#[derive(Copy, Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Default)]
+#[repr(u8)]
 pub enum SimpleType {
     Solid,
     Water,
     Avoid,
+    #[default]
     WalkThrough,
 }
 

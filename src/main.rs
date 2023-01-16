@@ -19,6 +19,7 @@
     unused_must_use,
     unused_extern_crates,
     warnings,
+    clippy::nursery,
     clippy::complexity,
     clippy::correctness,
     clippy::pedantic,
@@ -50,6 +51,8 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 #![allow(clippy::cast_sign_loss)]
+#![allow(clippy::future_not_send)]
+#![allow(clippy::cognitive_complexity)]
 // TODO: remove most of these
 #![allow(
     incomplete_features,

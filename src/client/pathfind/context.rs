@@ -64,7 +64,7 @@ impl Default for PathConfig {
 }
 
 /// The global context for path traversal
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 pub struct GlobalContext<'a> {
     /// the costs and path configuration values
     pub path_config: &'a PathConfig,

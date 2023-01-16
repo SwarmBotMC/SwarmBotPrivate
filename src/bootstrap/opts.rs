@@ -4,7 +4,11 @@ use clap::Parser;
 
 /// Options parsed from CLI
 #[derive(Parser, Debug)]
-#[clap(version = "1.0", author = "Andrew Gazelka", disable_version_flag = true)]
+#[clap(
+    version = "1.0",
+    author = "Andrew Gazelka",
+    disable_version_flag = true
+)]
 pub struct CliOptions {
     /// The host which the bot will connect to
     pub host: String,
@@ -64,7 +68,7 @@ pub struct CliOptions {
 
     /// if we are launching in offline mode
     #[clap(long)]
-    pub offline: bool
+    pub offline: bool,
 }
 
 impl CliOptions {

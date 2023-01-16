@@ -31,11 +31,11 @@ async fn dns_lookup(host: &str) -> anyhow::Result<Address> {
 /// Normalizes the address. Some servers like 2b2t have a separate address for
 /// minecraft since they have a special mc record
 pub async fn normalize_address(host: &str, port: u16) -> Address {
-    match dns_lookup(host).await {
-        Ok(res) => res,
-        Err(_) => Address {
+    (dns_lookup(host).await).map_or_else(
+        |_| Address {
             host: host.to_string(),
             port,
         },
-    }
+        |res| res,
+    )
 }

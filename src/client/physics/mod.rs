@@ -38,11 +38,11 @@ struct Pending {
 }
 
 fn effects_multiplier(speed: f64, slowness: f64) -> f64 {
-    (1.0 + 0.2 * speed) * (1. - 0.15 * slowness)
+    0.2f64.mul_add(speed, 1.0) * 0.15f64.mul_add(-slowness, 1.)
 }
 
 fn initial_ver(jump_boost: u32) -> f64 {
-    0.42 + 0.1 * f64::from(jump_boost)
+    0.1f64.mul_add(f64::from(jump_boost), 0.42)
 }
 
 fn ver_speed(prev_speed: f64) -> f64 {
@@ -103,7 +103,7 @@ pub struct Actions {
 /// Used to simulate a player position. Takes in movement events (such as
 /// jumping and strafing) and allows polling the resulting player data---for
 /// instance location. # Resources
-/// - [Minecaft Parkour](https://www.mcpk.wiki/wiki/Movement_Formulas)
+/// - [Minecraft Parkour](https://www.mcpk.wiki/wiki/Movement_Formulas)
 #[derive(Debug, Default)]
 pub struct Physics {
     location: Location,
@@ -128,7 +128,7 @@ pub enum Line {
 }
 
 pub fn mot_xz(mut strafe: f64, mut forward: f64, movement_factor: f64) -> [f64; 2] {
-    let dist2 = strafe * strafe + forward * forward;
+    let dist2 = strafe.mul_add(strafe, forward * forward);
     if dist2 >= 1.0E-4 {
         let dist = dist2.sqrt().max(1.0);
 
@@ -216,7 +216,7 @@ impl Physics {
 
         // we know this is within bounds
         #[allow(clippy::cast_possible_truncation)]
-        let face = Face::from(face_idx as u8);
+        let face = Face::try_from(face_idx as u8).unwrap();
 
         self.place_hand_face(against, face);
     }
@@ -347,8 +347,12 @@ impl Physics {
         let sideways = horizontal.cross(UNIT_Y);
 
         let move_mults = [
-            horizontal.dx * forward_change + sideways.dx * strafe_change,
-            horizontal.dz * forward_change + sideways.dz * strafe_change,
+            horizontal
+                .dx
+                .mul_add(forward_change, sideways.dx * strafe_change),
+            horizontal
+                .dz
+                .mul_add(forward_change, sideways.dz * strafe_change),
         ];
 
         let effect_mult = effects_multiplier(0.0, 0.0);
@@ -379,7 +383,7 @@ impl Physics {
             let downwards_force = feet_flowing || head_flowing;
 
             // TODO: remove 0.014
-            let res = self.prev.y_vel * WATER_SLOW_DOWN - 0.02
+            let res = self.prev.y_vel.mul_add(WATER_SLOW_DOWN, -0.02)
                 + if self.pending.jump { 0.04 } else { 0. }
                 - if downwards_force { 0.014 } else { 0. };
 

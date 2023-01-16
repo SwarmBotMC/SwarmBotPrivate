@@ -82,17 +82,19 @@ impl Face {
     }
 }
 
-impl From<u8> for Face {
+impl TryFrom<u8> for Face {
+    type Error = ();
+
     #[allow(clippy::panic)]
-    fn from(elem: u8) -> Self {
+    fn try_from(elem: u8) -> Result<Self, Self::Error> {
         match elem {
-            0 => Self::NegY,
-            1 => Self::PosY,
-            2 => Self::NegZ,
-            3 => Self::PosZ,
-            4 => Self::NegX,
-            5 => Self::PosX,
-            _ => panic!("invalid"),
+            0 => Ok(Self::NegY),
+            1 => Ok(Self::PosY),
+            2 => Ok(Self::NegZ),
+            3 => Ok(Self::PosZ),
+            4 => Ok(Self::NegX),
+            5 => Ok(Self::PosX),
+            _ => Err(()),
         }
     }
 }

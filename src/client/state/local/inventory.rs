@@ -14,20 +14,21 @@ pub struct ItemStack {
     pub nbt: Option<ItemNbt>,
 }
 
-impl From<Slot> for Option<ItemStack> {
-    fn from(slot: Slot) -> Self {
+impl TryFrom<Slot> for ItemStack {
+    type Error = ();
+    fn try_from(slot: Slot) -> Result<Self, Self::Error> {
         if slot.present() {
-            let count = slot.item_count.unwrap();
+            let count = slot.item_count.unwrap_or_default();
             let id = slot.block_id;
             let kind = BlockKind(id as u32);
-            Some(ItemStack::new(
+            Ok(Self::new(
                 kind,
                 count,
-                slot.item_damage.unwrap(),
+                slot.item_damage.unwrap_or_default(),
                 slot.nbt,
             ))
         } else {
-            None
+            Err(())
         }
     }
 }
@@ -73,20 +74,17 @@ impl PlayerInventory {
             Some(idx)
         });
 
-        if let Some(idx) = idx {
+        idx.map_or(true, |idx| {
             out.inventory_action(InvAction::CtrlQ(idx as u16));
             false
-        } else {
-            true
-        }
+        })
     }
 
     #[allow(unused)]
     pub fn current_tool(&self) -> Tool {
-        match &self.hotbar()[self.selected as usize] {
-            Some(item) => Tool::from(item),
-            None => Tool::default(),
-        }
+        self.hotbar()[self.selected as usize]
+            .as_ref()
+            .map_or_else(Tool::default, Tool::from)
     }
 
     pub fn current(&self) -> Option<&ItemStack> {
@@ -120,10 +118,7 @@ impl PlayerInventory {
         out: &mut impl InterfaceOut,
     ) -> Tool {
         let tools = self.hotbar().iter().enumerate().map(|(idx, item_stack)| {
-            let tool = match item_stack.as_ref() {
-                Some(stack) => Tool::from(stack),
-                None => Tool::default(),
-            };
+            let tool = item_stack.as_ref().map_or_else(Tool::default, Tool::from);
             (idx, tool)
         });
 
@@ -158,12 +153,10 @@ impl PlayerInventory {
                 block(item_stack.kind).then_some(idx)
             });
 
-        if let Some(idx) = block_idx {
+        block_idx.map_or(false, |idx| {
             self.change_slot(idx as u8, out);
             true
-        } else {
-            false
-        }
+        })
     }
 
     pub fn remove(&mut self, idx: usize) {

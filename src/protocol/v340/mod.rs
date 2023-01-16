@@ -80,9 +80,9 @@ impl EventQueue340 {
                     data,
                 } = data.read();
                 if window_id == 0 {
-                    match data.into() {
-                        None => processor.on_lose_item(idx as usize),
-                        Some(item_stack) => processor.on_pickup_item(idx as usize, item_stack),
+                    match data.try_into() {
+                        Err(..) => processor.on_lose_item(idx as usize),
+                        Ok(item_stack) => processor.on_pickup_item(idx as usize, item_stack),
                     }
                 }
             }
@@ -93,9 +93,9 @@ impl EventQueue340 {
                 if window_id == 0 {
                     // is player inventory
                     for (idx, slot) in slots.0.into_iter().enumerate() {
-                        match slot.into() {
-                            None => processor.on_lose_item(idx),
-                            Some(item_stack) => processor.on_pickup_item(idx, item_stack),
+                        match slot.try_into() {
+                            Err(..) => processor.on_lose_item(idx),
+                            Ok(item_stack) => processor.on_pickup_item(idx, item_stack),
                         }
                     }
                 }
