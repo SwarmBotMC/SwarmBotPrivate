@@ -30,14 +30,16 @@ pub trait Problem: Send + Sync {
     fn recalc(&mut self, context: Self::Node);
 }
 
-pub struct PlayerProblem<H: Heuristic<MoveNode>, G: GoalCheck<MoveNode>> {
+/// A problem that is defined as searchable by [`AStar`] with nodes being a
+/// discrete [`MoveNode`].
+pub struct DiscreteSearchProblem<H: Heuristic<MoveNode>, G: GoalCheck<MoveNode>> {
     a_star: AStar<MoveNode>,
     heuristic: H,
     goal_checker: G,
 }
 
 impl<H: Heuristic<MoveNode> + Send + Sync, G: GoalCheck<MoveNode> + Send + Sync>
-    PlayerProblem<H, G>
+    DiscreteSearchProblem<H, G>
 {
     pub fn new(start: MoveNode, heuristic: H, goal_checker: G) -> Self {
         let a_star = AStar::new(start);
@@ -66,7 +68,7 @@ impl Progressor<MoveNode> for GenericProgressor<'_> {
 }
 
 impl<H: Heuristic<MoveNode> + Send + Sync, G: GoalCheck<MoveNode> + Send + Sync> Problem
-    for PlayerProblem<H, G>
+    for DiscreteSearchProblem<H, G>
 {
     type Node = MoveNode;
 

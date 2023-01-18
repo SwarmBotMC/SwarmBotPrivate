@@ -2,7 +2,7 @@ use interfaces::types::{BlockLocation, BlockLocation2D, ChunkLocation};
 
 use crate::client::pathfind::{
     context::MoveNode,
-    implementations::PlayerProblem,
+    implementations::DiscreteSearchProblem,
     traits::{GoalCheck, Heuristic},
 };
 
@@ -132,10 +132,10 @@ impl Heuristic for ChunkHeuristic {
 
 pub struct TravelProblem;
 
-pub type TravelNearProblem = PlayerProblem<BlockHeuristic, BlockNearGoalCheck>;
-pub type TravelBlockProblem = PlayerProblem<BlockHeuristic, BlockGoalCheck>;
-pub type TravelChunkProblem = PlayerProblem<ChunkHeuristic, ChunkGoalCheck>;
-pub type TravelChunkCenterProblem = PlayerProblem<ChunkHeuristic, CenterChunkGoalCheck>;
+pub type TravelNearProblem = DiscreteSearchProblem<BlockHeuristic, BlockNearGoalCheck>;
+pub type TravelBlockProblem = DiscreteSearchProblem<BlockHeuristic, BlockGoalCheck>;
+pub type TravelChunkProblem = DiscreteSearchProblem<ChunkHeuristic, ChunkGoalCheck>;
+pub type TravelChunkCenterProblem = DiscreteSearchProblem<ChunkHeuristic, CenterChunkGoalCheck>;
 
 impl TravelProblem {
     pub fn navigate_block(start: BlockLocation, goal: BlockLocation) -> TravelBlockProblem {
@@ -145,7 +145,7 @@ impl TravelProblem {
         };
         let start_node = MoveNode::simple(start);
         let goal_checker = BlockGoalCheck::new(goal);
-        PlayerProblem::new(start_node, heuristic, goal_checker)
+        DiscreteSearchProblem::new(start_node, heuristic, goal_checker)
     }
 
     pub fn navigate_near_block(
@@ -160,7 +160,7 @@ impl TravelProblem {
         };
         let start_node = MoveNode::simple(start);
         let goal_checker = BlockNearGoalCheck::new(goal, dist2, must_not_hit);
-        PlayerProblem::new(start_node, heuristic, goal_checker)
+        DiscreteSearchProblem::new(start_node, heuristic, goal_checker)
     }
 
     #[allow(unused)]
@@ -168,7 +168,7 @@ impl TravelProblem {
         let heuristic = ChunkHeuristic::new(goal, 1.0);
         let start_node = MoveNode::simple(start);
         let goal_checker = ChunkGoalCheck { goal };
-        PlayerProblem::new(start_node, heuristic, goal_checker)
+        DiscreteSearchProblem::new(start_node, heuristic, goal_checker)
     }
 
     #[allow(unused)]
@@ -179,6 +179,6 @@ impl TravelProblem {
         let heuristic = ChunkHeuristic::new(goal, 1.0);
         let start_node = MoveNode::simple(start);
         let goal_checker = CenterChunkGoalCheck::new(goal);
-        PlayerProblem::new(start_node, heuristic, goal_checker)
+        DiscreteSearchProblem::new(start_node, heuristic, goal_checker)
     }
 }

@@ -78,18 +78,12 @@ pub struct GlobalContext<'a> {
 pub struct MoveNode {
     /// The current location of the user
     pub location: BlockLocation,
-
-    /// The number of 'throwaway' blocks we have, i.e., for bridging
-    pub throwaway_block_count: usize,
 }
 
 impl MoveNode {
     /// A simple movement to `location`
     pub const fn simple(location: BlockLocation) -> Self {
-        Self {
-            location,
-            throwaway_block_count: 0,
-        }
+        Self { location }
     }
 
     /// TODO: what
@@ -102,7 +96,6 @@ impl Clone for MoveNode {
     fn clone(&self) -> Self {
         Self {
             location: self.location,
-            throwaway_block_count: self.throwaway_block_count,
         }
     }
 }
@@ -113,13 +106,11 @@ impl Node for MoveNode {
     fn get_record(&self) -> Self::Record {
         let &Self {
             location,
-            throwaway_block_count,
             ..
         } = self;
 
         let state = MoveState {
             location,
-            throwaway_block_count,
         };
 
         Self::Record { state }
@@ -129,7 +120,6 @@ impl Node for MoveNode {
 #[derive(Hash, Eq, PartialEq, Clone, Debug)]
 pub struct MoveState {
     pub location: BlockLocation,
-    pub throwaway_block_count: usize,
 }
 
 #[derive(Clone, Debug)]

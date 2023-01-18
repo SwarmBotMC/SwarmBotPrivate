@@ -12,7 +12,7 @@ use crate::{
                     BlockGoalCheck, BlockHeuristic, BlockNearGoalCheck, CenterChunkGoalCheck,
                     ChunkHeuristic, TravelProblem,
                 },
-                PlayerProblem, Problem,
+                DiscreteSearchProblem, Problem,
             },
             traits::{GoalCheck, Heuristic},
         },
@@ -44,14 +44,15 @@ impl BlockTravelTask {
     }
 }
 
+/// wraps a [`DiscreteSearchProblem`] (A*) and its [`Follower`]
 pub struct NavigateProblem<H: Heuristic, G: GoalCheck> {
     calculate: bool,
-    problem: Box<PlayerProblem<H, G>>,
+    problem: Box<DiscreteSearchProblem<H, G>>,
     follower: Option<Follower>,
 }
 
-impl<H: Heuristic, G: GoalCheck> From<PlayerProblem<H, G>> for NavigateProblem<H, G> {
-    fn from(problem: PlayerProblem<H, G>) -> Self {
+impl<H: Heuristic, G: GoalCheck> From<DiscreteSearchProblem<H, G>> for NavigateProblem<H, G> {
+    fn from(problem: DiscreteSearchProblem<H, G>) -> Self {
         Self {
             calculate: true,
             problem: box problem,
