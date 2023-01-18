@@ -1817,54 +1817,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
-name = "swarm-bot"
-version = "0.3.4"
-dependencies = [
- "aes",
- "anyhow",
- "assert_matches",
- "bincode",
- "bytes",
- "cfb8",
- "clap",
- "colored",
- "crossterm",
- "csv",
- "enum-map",
- "enum_dispatch",
- "flate2",
- "float-ord",
- "fs_extra",
- "futures",
- "hematite-nbt",
- "hex-literal",
- "indexmap",
- "itertools",
- "more-asserts",
- "num",
- "num-bigint",
- "primes",
- "rand 0.8.5",
- "rayon",
- "regex",
- "reqwest",
- "rsa",
- "rsa-der",
- "serde",
- "serde_json",
- "sha1",
- "smallvec",
- "swarm-bot-packets",
- "swarmbot-interfaces",
- "tempdir",
- "tokio",
- "tokio-socks",
- "tokio-stream",
- "tokio-tungstenite 0.18.0",
- "trust-dns-resolver",
-]
-
-[[package]]
 name = "swarm-bot-packets"
 version = "0.2.0"
 dependencies = [
@@ -1912,6 +1864,74 @@ dependencies = [
  "tokio",
  "tokio-tungstenite 0.17.2",
  "tungstenite 0.17.3",
+]
+
+[[package]]
+name = "swarmbot-lib"
+version = "0.1.0"
+dependencies = [
+ "aes",
+ "anyhow",
+ "assert_matches",
+ "bincode",
+ "bytes",
+ "cfb8",
+ "clap",
+ "colored",
+ "crossterm",
+ "csv",
+ "enum-map",
+ "enum_dispatch",
+ "flate2",
+ "float-ord",
+ "fs_extra",
+ "futures",
+ "hematite-nbt",
+ "hex-literal",
+ "indexmap",
+ "itertools",
+ "more-asserts",
+ "num",
+ "num-bigint",
+ "primes",
+ "rand 0.8.5",
+ "rayon",
+ "regex",
+ "reqwest",
+ "rsa",
+ "rsa-der",
+ "serde",
+ "serde_json",
+ "sha1",
+ "smallvec",
+ "swarm-bot-packets",
+ "swarmbot-interfaces",
+ "tempdir",
+ "tokio",
+ "tokio-socks",
+ "tokio-stream",
+ "tokio-tungstenite 0.18.0",
+ "trust-dns-resolver",
+]
+
+[[package]]
+name = "swarmbot-runner"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "swarmbot-lib",
+ "tokio",
+]
+
+[[package]]
+name = "swarmbot-test"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "fs_extra",
+ "swarmbot-lib",
+ "tempdir",
+ "tokio",
 ]
 
 [[package]]
@@ -2022,9 +2042,9 @@ checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
 
 [[package]]
 name = "tokio"
-version = "1.24.1"
+version = "1.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d9f76183f91ecfb55e1d7d5602bd1d979e38a3a522fe900241cf195624d67ae"
+checksum = "597a12a59981d9e3c38d216785b0c37399f6e415e8d0712047620f189371b0bb"
 dependencies = [
  "autocfg",
  "bytes",

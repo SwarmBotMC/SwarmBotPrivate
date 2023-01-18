@@ -71,8 +71,19 @@ pub struct CliOptions {
     pub offline: bool,
 }
 
-impl CliOptions {
-    pub fn get() -> Self {
-        Self::parse()
+impl Default for CliOptions {
+    fn default() -> Self {
+        Self {
+            host: "127.0.0.1".to_string(),
+            count: 1,
+            proxy: false,
+            port: 25565,
+            ws_port: 8080,
+            delay_ms: 500,
+            users_file: String::new(),
+            proxies_file: String::new(),
+            version: 340,
+            offline: true,
+        }
     }
 }

@@ -1,135 +1,32 @@
-[package]
-name = "swarm-bot"
-version = "0.3.4"
-edition = "2021"
-description = "A autonomous bot launcher for Minecraft"
-license = "Business Source License"
-readme = "README.md"
-authors = ["Andrew Gazelka <andrew.gazelka@gmail.com>"]
-repository = "https://github.com/andrewgazelka/SwarmBot"
-homepage = "https://github.com/andrewgazelka/SwarmBot"
+#[package]
+#name = "swarm-bot"
+#version = "0.3.4"
+#edition = "2021"
+#description = "A autonomous bot launcher for Minecraft"
+#license = "Business Source License"
+#readme = "README.md"
+#authors = ["Andrew Gazelka <andrew.gazelka@gmail.com>"]
+#repository = "https://github.com/andrewgazelka/SwarmBot"
+#homepage = "https://github.com/andrewgazelka/SwarmBot"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[dependencies]
-
-# parsing arguments
-clap = { version = "4.0.32", features = ["derive"] }
-
-# reading from csv
-csv = "1.1"
-
-# serialization, deserialization
-serde = { version = "1.0", features = ["derive"] }
-
-# socks5
-tokio-socks = "0.5"
-
-# tokio
-tokio = { version = "1.24", features = [
-    "rt",
-    "io-std",
-    "io-util",
-    "sync",
-    "parking_lot",
-] }
-
-# dns
-trust-dns-resolver = "0.22"
-
-# encryption
-aes = "0.7.5"
-
-# zlib
-#flate2 = {version = "1.0"}
-flate2 = { version = "1.0", features = [
-    "zlib-ng-compat",
-], default-features = false }
-
-# get_u8, etc extensions
-bytes = "1.1"
-
-# threads
-rayon = "1.5"
-
-# mojang https api
-reqwest = { version = "0.11", features = ["json", "socks"] }
-
-# for minecraft auth RSA response
-rsa-der = "0.3"
-rsa = "0.7"
-
-# used for RSA and random generation
-rand = "0.8"
-
-# mojang hash
-num-bigint = "0.4"
-
-# mojang hash
-sha1 = "0.10"
-
-# json parsing (particularly for mojang api)
-serde_json = "1.0"
-
-# quite a few uses
-itertools = "0.10"
-
-# for data storage
-
-# chat parsing
-regex = "1.5"
-
-# efficient hashmap
-indexmap = { version = "1.7", features = ["std"] }
-
-float-ord = "0.3"
-
-# for num casting
-num = "0.4"
-
-# for printing stuff out
-crossterm = "0.25"
-
-colored = "2.0"
-
-# for small stack-allocated arrays
-smallvec = { version = "1.7", features = ["const_generics"] }
-
-# for parsing nbt
-hematite-nbt = "0.5"
-
-swarm-bot-packets = { path = "packets", version = "0.2.0" }
-
-# so we don't have to use v-tables
-enum_dispatch = "0.3"
-
-# websockets
-tokio-tungstenite = "0.18"
-
-futures = "0.3"
-
-interfaces = { package = "swarmbot-interfaces", path = "interfaces", version = "0.1.0" }
-anyhow = "1.0.68"
-bincode = "2.0.0-alpha.2"
-hex-literal = "0.3.4"
-cfb8 = "0.7"
-tokio-stream = "0.1.11"
-enum-map = "2.4"
-
-[dev-dependencies]
-tempdir = "0.3.7"
-assert_matches = "1.5"
-more-asserts = "0.3"
-primes = "0.3"
-fs_extra = "1.2"
-
-
 [workspace]
-members = ["packets", "interfaces", "swarmbot-cli"]
+members = ["packets", "interfaces", "swarmbot-cli", "swarmbot-lib", "swarmbot-runner", "swarmbot-test"]
+
+[workspace.dependencies]
+swarm-bot-packets = { path = "packets" }
+interfaces = { package = "swarmbot-interfaces", path = "interfaces" }
+swarmbot-cli = { path = "swarmbot-cli" }
+swarmbot-runner = { path = "swarmbot-runner" }
+swarmbot-lib = { path = "swarmbot-lib" }
+
+
+
 
 [profile.dev]
-split-debuginfo = "unpacked"
-opt-level = 1
+#split-debuginfo = "unpacked"
+#opt-level = 1
 
 
 [profile.release]

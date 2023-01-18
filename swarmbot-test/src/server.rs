@@ -1,10 +1,6 @@
-use std::{
-    path::PathBuf,
-    process::{Child, Command},
-    time::Duration,
-};
+use std::path::PathBuf;
+use std::process::{Child, Command};
 use fs_extra::dir::CopyOptions;
-
 use tempdir::TempDir;
 
 struct Setup {
@@ -25,7 +21,6 @@ impl Setup {
             PathBuf::from(path)
         };
 
-
         let server_dir = project_root.join("test-data/server");
 
         println!("server directory: {server_dir:?}");
@@ -34,7 +29,7 @@ impl Setup {
     }
 }
 
-struct Server {
+pub struct Server {
     #[allow(unused)]
     dir: TempDir,
     process: Child,
@@ -50,7 +45,7 @@ impl Drop for Server {
 }
 
 impl Server {
-    fn init() -> anyhow::Result<Server> {
+    pub(crate) fn init() -> anyhow::Result<Server> {
         let dir = TempDir::new("mc-server")?;
 
         let Setup { server_dir } = Setup::init()?;
@@ -73,12 +68,4 @@ impl Server {
 
         Ok(Self { dir, process })
     }
-}
-
-#[test]
-fn test_run_paper() -> anyhow::Result<()> {
-    let _server = Server::init()?;
-    std::thread::sleep(Duration::from_secs(60));
-
-    Ok(())
 }

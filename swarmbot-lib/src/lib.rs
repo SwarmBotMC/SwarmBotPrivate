@@ -71,7 +71,6 @@
 
 // TODO: uncomment these
 // #![deny(missing_docs)]
-// #![deny(clippy::missing_docs_in_private_items)]
 
 #[allow(unused, clippy::useless_attribute)]
 extern crate test;
@@ -83,15 +82,13 @@ extern crate swarm_bot_packets;
 
 use std::pin::Pin;
 
-use anyhow::Context;
+use anyhow::{bail, Context};
+pub use bootstrap::opts::CliOptions;
 use futures::Stream;
-use tokio::{runtime::Runtime, task};
 use tokio_stream::{wrappers::ReceiverStream, StreamExt};
 
 use crate::{
-    bootstrap::{
-        dns::normalize_address, opts::CliOptions, storage::BotConnectionData, BotConnection,
-    },
+    bootstrap::{dns::normalize_address, storage::BotConnectionData, BotConnection},
     client::runner::{Runner, RunnerOptions},
 };
 
@@ -102,24 +99,11 @@ mod schematic;
 mod storage;
 mod types;
 
-fn main() {
-    // create the single-threaded async runtime
-    // we still leverage threads—however in a non-async context.
-    // For instance, A* and other CPU-heavy tasks are spawned into threads
-    let rt = Runtime::new().unwrap();
-    let local = task::LocalSet::new();
-    local.block_on(&rt, async move {
-        match run().await {
-            // this should never happen as this should be an infinite loop
-            Ok(_) => println!("Program exited without errors somehow"),
-
-            // print the error in non-debug fashion
-            Err(err) => println!("{err}"),
-        }
-    });
-}
-
-async fn run() -> anyhow::Result<()> {
+/// Run `SwarmBot` with options [`CliOptions`]
+///
+/// # Errors
+/// If there is an error, return an [`anyhow`] error.
+pub async fn run(options: CliOptions) -> anyhow::Result<()> {
     // grab options from CLI
     let CliOptions {
         users_file,
@@ -132,7 +116,7 @@ async fn run() -> anyhow::Result<()> {
         ws_port,
         proxy,
         offline,
-    } = CliOptions::get();
+    } = options;
 
     // A list of users we will login
 
@@ -171,7 +155,7 @@ async fn run() -> anyhow::Result<()> {
             .await
             .context("Error starting up 1.12")?, // 1.12.2
         _ => {
-            panic!("version {version} does not exist")
+            bail!("version {version} does not exist")
         }
     }
 
