@@ -7,7 +7,7 @@ use num::traits::Pow;
 
 use crate::{
     client::{
-        pathfind::incremental::Node, physics::speed::Speed,
+        pathfind::incremental::Node, physics::speed::MovementSpeed,
         state::local::inventory::PlayerInventory,
     },
     protocol::Face,
@@ -32,12 +32,12 @@ const UNIT_Y: Displacement = Displacement::new(0., 1., 0.);
 const EPSILON_Y: Displacement = Displacement::new(0., 0.001, 0.);
 
 #[derive(Debug, Default, Copy, Clone, PartialOrd, PartialEq)]
-struct Pending {
+struct PendingMovement {
     strafe: Option<Strafe>,
     pub place: Option<BlockPlaced>,
     jump: bool,
-    line: Option<Line>,
-    speed: Speed,
+    walk_direction: Option<WalkDirection>,
+    speed: MovementSpeed,
 }
 
 fn effects_multiplier(speed: f64, slowness: f64) -> f64 {
@@ -114,7 +114,7 @@ pub struct Physics {
     look: Direction,
     prev: MovementState,
     horizontal: Displacement,
-    pending: Pending,
+    pending: PendingMovement,
     in_water: bool,
 }
 
@@ -134,7 +134,7 @@ pub enum Strafe {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
-pub enum Line {
+pub enum WalkDirection {
     Forward,
     Backward,
 }
@@ -192,8 +192,8 @@ impl Physics {
         self.look
     }
 
-    pub fn line(&mut self, line: Line) {
-        self.pending.line = Some(line);
+    pub fn walk_direction(&mut self, line: WalkDirection) {
+        self.pending.walk_direction = Some(line);
     }
 
     // pub fn strafe(&mut self, strafe: Strafe) {
@@ -233,7 +233,7 @@ impl Physics {
         self.place_hand_face(against, face);
     }
 
-    pub fn speed(&mut self, speed: Speed) {
+    pub fn speed(&mut self, speed: MovementSpeed) {
         self.pending.speed = speed;
     }
 
@@ -345,10 +345,10 @@ impl Physics {
                 Some(Strafe::Left) => -1.0,
             };
 
-            let line_factor = match self.pending.line {
+            let line_factor = match self.pending.walk_direction {
                 None => 0.0,
-                Some(Line::Forward) => 1.0,
-                Some(Line::Backward) => -1.0,
+                Some(WalkDirection::Forward) => 1.0,
+                Some(WalkDirection::Backward) => -1.0,
             };
 
             let move_factor = self.pending.speed.multiplier();
@@ -419,7 +419,7 @@ impl Physics {
                 speeds[i] =
                     ground_speed(prev_speeds[i], prev_slip, move_mults[i], effect_mult, slip);
             }
-            if self.pending.speed == Speed::SPRINT {
+            if self.pending.speed == MovementSpeed::SPRINT {
                 let move_displacement =
                     Displacement::new(move_mults[0], 0., move_mults[1]).normalize();
                 speeds[0] += move_displacement.dx * 0.2;
@@ -529,7 +529,7 @@ impl Physics {
             block_placed: self.pending.place.take(),
         };
 
-        self.pending = Pending::default();
+        self.pending = PendingMovement::default();
 
         self.prev = MovementState {
             speeds,
@@ -560,7 +560,7 @@ mod tests {
 
     use crate::{
         client::{
-            physics::{speed::Speed, Line, Physics},
+            physics::{speed::MovementSpeed, WalkDirection, Physics},
             state::local::inventory::PlayerInventory,
         },
         storage::blocks::WorldBlocks,
@@ -580,8 +580,8 @@ mod tests {
 
         let mut ticks = 0;
         loop {
-            physics.line(Line::Forward);
-            physics.speed(Speed::SPRINT);
+            physics.walk_direction(WalkDirection::Forward);
+            physics.speed(MovementSpeed::SPRINT);
             physics.tick(&mut world, &PlayerInventory::default());
 
             ticks += 1;
@@ -609,8 +609,8 @@ mod tests {
 
         let mut ticks = 0;
         loop {
-            physics.line(Line::Forward);
-            physics.speed(Speed::SPRINT);
+            physics.walk_direction(WalkDirection::Forward);
+            physics.speed(MovementSpeed::SPRINT);
             physics.jump();
             physics.tick(&mut world, &PlayerInventory::default());
 

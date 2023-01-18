@@ -2,18 +2,18 @@
 
 use interfaces::types::{Direction, Location};
 use num::complex::ComplexFloat;
+use smallvec::{smallvec, SmallVec};
 use test::stats::Stats;
 
 use crate::client::{
     pathfind::{
         context::BlockNode,
         implementations::SearchProblem,
-        traits::{GoalCheck, Heuristic},
+        traits::{GoalCheck, Heuristic, Progression, Progressor},
     },
-    physics::Physics,
+    physics::{speed::MovementSpeed, Physics, WalkDirection},
     tasks::navigate::ProblemDefinition,
 };
-use crate::client::pathfind::traits::{Progression, Progressor};
 
 struct PhysicsHeuristic {
     goal: Location,
@@ -88,23 +88,54 @@ impl GoalCheck<Physics> for PhysicsGoalCheck {
     }
 }
 
-
 /// angles discretized
-fn discretized_angles(angle: Direction) -> impl Iterator<Item = Direction>{
+fn discretized_angles(angle: Direction) -> impl Iterator<Item = Direction> {
     let horizontal = angle.as_horizontal();
 
-    let degrees = [0.0, -2.5, 2.5, -5.0, 5.0, -15.0, 15.0, -45.0, 45.0, -90.0, 90.0, 180.0];
+    // degrees
+    let degrees = [0.0, -6.6, 20.0, -60.0, 180.0];
 
     degrees.into_iter().map(|deg| horizontal.turn_degrees(deg))
 }
 
 struct PhysicsProgressor;
 impl Progressor<Physics> for PhysicsProgressor {
+    type Iter = impl IntoIterator<Item = Physics>;
+
     fn progressions(&self, input: &Physics) -> Progression<BlockNode> {
+        // 5
+        let angles = discretized_angles(input.direction());
 
+        // 2
+        let walk_directions = [WalkDirection::Backward, WalkDirection::Forward];
 
+        // 2
+        let jump: SmallVec<[_; 2]> = if input.on_ground() {
+            smallvec![true, false]
+        } else {
+            smallvec![false]
+        };
 
+        // 2
+        let speeds = [MovementSpeed::SPRINT, MovementSpeed::WALK];
 
+        // 40 nodes
+
+        for res in itertools::izip!(angles, walk_directions, jump, speeds) {
+            let res: (Direction, WalkDirection, bool, MovementSpeed) = res;
+            let (angle, dir, jump, speed) = res;
+
+            Physics {
+                location: Default::default(),
+                look: Default::default(),
+                prev: Default::default(),
+                horizontal: Default::default(),
+                pending: Default::default(),
+                in_water: false,
+            }
+        }
+
+        todo!()
     }
 }
 

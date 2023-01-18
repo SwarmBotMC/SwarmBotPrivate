@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use crate::{
     client::{
         pathfind::{context::BlockRecord, incremental::PathResult},
-        physics::{speed::Speed, Line},
+        physics::{speed::MovementSpeed, WalkDirection},
         state::{global::GlobalState, local::LocalState},
     },
     types::{Direction, Location},
@@ -237,8 +237,8 @@ impl Follower for BlockFollower {
 
         // by default move forward and sprint. Strafing is not needed; we can just
         // change the direction we look
-        local.physics.line(Line::Forward);
-        local.physics.speed(Speed::SPRINT);
+        local.physics.walk_direction(WalkDirection::Forward);
+        local.physics.speed(MovementSpeed::SPRINT);
 
         // We include a tick counter so we can determine if we have been stuck on a
         // movement for too long
@@ -320,7 +320,7 @@ impl Follower for BlockFollower {
             if mag2_horizontal < MIN_SPRINT_DIST * MIN_SPRINT_DIST
                 && velocity.mag2() > JUMP_THRESHOLD_VEL * JUMP_THRESHOLD_VEL
             {
-                local.physics.speed(Speed::WALK);
+                local.physics.speed(MovementSpeed::WALK);
             }
         }
 

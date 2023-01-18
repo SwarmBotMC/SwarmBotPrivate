@@ -3,7 +3,7 @@ use interfaces::types::BlockLocation;
 use crate::{
     client::{
         pathfind::moves::CardinalDirection,
-        physics::{speed::Speed, Line},
+        physics::{speed::MovementSpeed, WalkDirection},
         state::{global::GlobalState, local::LocalState},
         tasks::TaskTrait,
     },
@@ -41,8 +41,8 @@ impl TaskTrait for BridgeTask {
         let direction = Direction::from(-displacement);
 
         local.physics.look(direction);
-        local.physics.line(Line::Backward);
-        local.physics.speed(Speed::WALK);
+        local.physics.walk_direction(WalkDirection::Backward);
+        local.physics.speed(MovementSpeed::WALK);
 
         let target_loc = self.place_against.true_center();
         let current_loc = local.physics.location();

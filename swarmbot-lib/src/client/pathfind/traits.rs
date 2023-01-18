@@ -36,7 +36,7 @@ pub enum Progression<T> {
     Edge,
 
     /// a list of movements. This is essentially the found path
-    Movements(Vec<Neighbor<T>>),
+    Movements(T),
 }
 
 impl<T: Debug> Debug for Progression<T> {
@@ -51,8 +51,9 @@ impl<T: Debug> Debug for Progression<T> {
 ///
 /// A [`Progressor`] generally has a notion of a goal built into it
 pub trait Progressor<T = BlockNode> {
+    type Iter: IntoIterator<Item = T>;
     /// find progressions towards a goal given an `input`
-    fn progressions(&self, input: &T) -> Progression<T>;
+    fn progressions(&self, input: &T) -> Progression<Self::Iter>;
 }
 
 /// The ability to tell whether a node is a goal node or not

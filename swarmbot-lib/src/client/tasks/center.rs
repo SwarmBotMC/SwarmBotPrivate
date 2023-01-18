@@ -2,7 +2,7 @@ use interfaces::types::BlockLocation;
 
 use crate::{
     client::{
-        physics::{speed::Speed, Line},
+        physics::{speed::MovementSpeed, WalkDirection},
         state::{global::GlobalState, local::LocalState},
         tasks::TaskTrait,
     },
@@ -30,8 +30,8 @@ impl TaskTrait for CenterTask {
         }
 
         local.physics.look_at(center_loc);
-        local.physics.line(Line::Forward);
-        local.physics.speed(Speed::SNEAK);
+        local.physics.walk_direction(WalkDirection::Forward);
+        local.physics.speed(MovementSpeed::SNEAK);
 
         false
     }
