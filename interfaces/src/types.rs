@@ -235,7 +235,7 @@ impl Display for Location {
     }
 }
 
-#[derive(Writable, Readable, Debug, Copy, Clone, Default)]
+#[derive(Writable, Readable, Debug, Copy, Clone, Default, PartialOrd, PartialEq)]
 pub struct Displacement {
     pub dx: f64,
     pub dy: f64,
@@ -579,7 +579,7 @@ impl DirectionOrigin {
     }
 }
 
-#[derive(Readable, Writable, Copy, Clone, Default, Debug)]
+#[derive(Readable, Writable, Copy, Clone, Default, Debug, PartialOrd, PartialEq)]
 pub struct Direction {
     /// wiki.vg:
     /// yaw is measured in degrees, and does not follow classical trigonometry
@@ -598,6 +598,15 @@ impl Direction {
         pitch: 90.,
     };
 
+    pub fn turn_degrees(self, amount: f32) -> Self {
+        let new_yaw = self.yaw + amount;
+
+        Self {
+            yaw: new_yaw % 360.0,
+            pitch: self.pitch,
+        }
+    }
+
     pub fn unit_vector(&self) -> Displacement {
         let pitch = self.pitch.to_radians();
         let yaw = self.yaw.to_radians();
@@ -609,7 +618,7 @@ impl Direction {
         Displacement::new(x as f64, y as f64, z as f64)
     }
 
-    pub fn horizontal(&self) -> Direction {
+    pub fn as_horizontal(&self) -> Direction {
         let mut res = *self;
         res.pitch = 0.0;
         res
@@ -731,7 +740,7 @@ impl Selection2D {
     }
 }
 
-#[derive(Writable, Readable, Debug, Copy, Clone, Default, PartialEq)]
+#[derive(Writable, Readable, Debug, Copy, Clone, Default, PartialEq, PartialOrd)]
 pub struct Location {
     pub x: f64,
     pub y: f64,
@@ -739,6 +748,13 @@ pub struct Location {
 }
 
 impl Location {
+    pub fn abs(self) -> Self {
+        Self {
+            x: self.x.abs(),
+            y: self.y.abs(),
+            z: self.z.abs(),
+        }
+    }
     pub fn sub_y(&self, dy: f64) -> Location {
         Location::new(self.x, self.y - dy, self.z)
     }

@@ -6,7 +6,7 @@ use interfaces::types::{
 
 use crate::{
     client::pathfind::{
-        context::{Costs, GlobalContext, MoveNode},
+        context::{Costs, GlobalContext, BlockNode},
         moves::centered_arr::CenteredArray,
         traits::{Neighbor, Progression},
     },
@@ -30,7 +30,7 @@ impl Default for State {
 }
 
 pub struct Movements<'a> {
-    on: &'a MoveNode,
+    on: &'a BlockNode,
     ctx: GlobalContext<'a>,
     current_multiplier: f64,
 }
@@ -38,7 +38,7 @@ pub struct Movements<'a> {
 struct Edge;
 
 impl<'a> Movements<'a> {
-    pub const fn new(on: &'a MoveNode, ctx: GlobalContext<'a>) -> Self {
+    pub const fn new(on: &'a BlockNode, ctx: GlobalContext<'a>) -> Self {
         Self {
             on,
             ctx,
@@ -57,13 +57,13 @@ impl<'a> Movements<'a> {
         BlockLocation::new(x + dx, y + dy, z + dz)
     }
 
-    fn move_node(&self) -> MoveNode {
-        MoveNode::from(self.on)
+    fn move_node(&self) -> BlockNode {
+        BlockNode::from(self.on)
     }
 
-    fn wrap(&self, dx: i32, dy: i16, dz: i32) -> MoveNode {
+    fn wrap(&self, dx: i32, dy: i16, dz: i32) -> BlockNode {
         let loc = self.loc(dx, dy, dz);
-        let mut node = MoveNode::from(self.on);
+        let mut node = BlockNode::from(self.on);
         node.location = loc;
         node
     }
@@ -129,14 +129,14 @@ impl<'a> Movements<'a> {
         Ok(head)
     }
 
-    pub fn obtain_all(self) -> Progression<MoveNode> {
+    pub fn obtain_all(self) -> Progression<BlockNode> {
         match self.obtain_all_internal() {
             Ok(elem) => Progression::Movements(elem),
             Err(Edge) => Progression::Edge,
         }
     }
 
-    fn obtain_all_internal(mut self) -> Result<Vec<Neighbor<MoveNode>>, Edge> {
+    fn obtain_all_internal(mut self) -> Result<Vec<Neighbor<BlockNode>>, Edge> {
         let head = self.check_head()?;
 
         // if adj_legs && adj_head is true for any idx

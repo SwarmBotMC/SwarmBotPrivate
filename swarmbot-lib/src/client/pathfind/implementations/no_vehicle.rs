@@ -1,8 +1,8 @@
 use interfaces::types::{BlockLocation, BlockLocation2D, ChunkLocation};
 
 use crate::client::pathfind::{
-    context::MoveNode,
-    implementations::DiscreteSearchProblem,
+    context::BlockNode,
+    implementations::SearchProblem,
     traits::{GoalCheck, Heuristic},
 };
 
@@ -27,7 +27,7 @@ impl BlockNearGoalCheck {
 }
 
 impl GoalCheck for BlockNearGoalCheck {
-    fn is_goal(&self, input: &MoveNode) -> bool {
+    fn is_goal(&self, input: &BlockNode) -> bool {
         let input = BlockLocation2D::from(input.location);
         let dist2 = input.dist2(self.goal) as f64;
         let same = if self.must_not_hit {
@@ -44,7 +44,7 @@ pub struct ChunkGoalCheck {
 }
 
 impl GoalCheck for ChunkGoalCheck {
-    fn is_goal(&self, input: &MoveNode) -> bool {
+    fn is_goal(&self, input: &BlockNode) -> bool {
         let cx = input.location.x >> 4;
         let cz = input.location.z >> 4;
         let chunk_loc = ChunkLocation(cx, cz);
@@ -69,7 +69,7 @@ impl CenterChunkGoalCheck {
 }
 
 impl GoalCheck for CenterChunkGoalCheck {
-    fn is_goal(&self, input: &MoveNode) -> bool {
+    fn is_goal(&self, input: &BlockNode) -> bool {
         let dx = self.goal_center_x - input.location.x;
         let dz = self.goal_center_z - input.location.z;
 
@@ -84,7 +84,7 @@ impl BlockGoalCheck {
 }
 
 impl GoalCheck for BlockGoalCheck {
-    fn is_goal(&self, input: &MoveNode) -> bool {
+    fn is_goal(&self, input: &BlockNode) -> bool {
         let close_y = (input.location.y - self.goal.y).abs() <= 1;
         close_y && input.location.x == self.goal.x && input.location.z == self.goal.z
     }
@@ -96,7 +96,7 @@ pub struct BlockHeuristic {
 }
 
 impl Heuristic for BlockHeuristic {
-    fn heuristic(&self, input: &MoveNode) -> f64 {
+    fn heuristic(&self, input: &BlockNode) -> f64 {
         let current = input.location;
         current.dist(self.goal) * self.move_cost * 0.2
     }
@@ -122,7 +122,7 @@ impl ChunkHeuristic {
 }
 
 impl Heuristic for ChunkHeuristic {
-    fn heuristic(&self, input: &MoveNode) -> f64 {
+    fn heuristic(&self, input: &BlockNode) -> f64 {
         let dx = f64::from(input.location.x - self.center_x);
         let dz = f64::from(input.location.z - self.center_z);
         let dist2 = dx.mul_add(dx, dz * dz);
@@ -132,10 +132,10 @@ impl Heuristic for ChunkHeuristic {
 
 pub struct TravelProblem;
 
-pub type TravelNearProblem = DiscreteSearchProblem<BlockHeuristic, BlockNearGoalCheck>;
-pub type TravelBlockProblem = DiscreteSearchProblem<BlockHeuristic, BlockGoalCheck>;
-pub type TravelChunkProblem = DiscreteSearchProblem<ChunkHeuristic, ChunkGoalCheck>;
-pub type TravelChunkCenterProblem = DiscreteSearchProblem<ChunkHeuristic, CenterChunkGoalCheck>;
+pub type TravelNearProblem = SearchProblem<BlockNode, BlockHeuristic, BlockNearGoalCheck>;
+pub type TravelBlockProblem = SearchProblem<BlockNode, BlockHeuristic, BlockGoalCheck>;
+pub type TravelChunkProblem = SearchProblem<BlockNode, ChunkHeuristic, ChunkGoalCheck>;
+pub type TravelChunkCenterProblem = SearchProblem<BlockNode, ChunkHeuristic, CenterChunkGoalCheck>;
 
 impl TravelProblem {
     pub fn navigate_block(start: BlockLocation, goal: BlockLocation) -> TravelBlockProblem {
@@ -143,9 +143,9 @@ impl TravelProblem {
             move_cost: 1.0,
             goal,
         };
-        let start_node = MoveNode::simple(start);
+        let start_node = BlockNode::simple(start);
         let goal_checker = BlockGoalCheck::new(goal);
-        DiscreteSearchProblem::new(start_node, heuristic, goal_checker)
+        SearchProblem::new(start_node, heuristic, goal_checker)
     }
 
     pub fn navigate_near_block(
@@ -158,17 +158,17 @@ impl TravelProblem {
             move_cost: 1.0,
             goal: goal.into(),
         };
-        let start_node = MoveNode::simple(start);
+        let start_node = BlockNode::simple(start);
         let goal_checker = BlockNearGoalCheck::new(goal, dist2, must_not_hit);
-        DiscreteSearchProblem::new(start_node, heuristic, goal_checker)
+        SearchProblem::new(start_node, heuristic, goal_checker)
     }
 
     #[allow(unused)]
     pub fn navigate_chunk(start: BlockLocation, goal: ChunkLocation) -> TravelChunkProblem {
         let heuristic = ChunkHeuristic::new(goal, 1.0);
-        let start_node = MoveNode::simple(start);
+        let start_node = BlockNode::simple(start);
         let goal_checker = ChunkGoalCheck { goal };
-        DiscreteSearchProblem::new(start_node, heuristic, goal_checker)
+        SearchProblem::new(start_node, heuristic, goal_checker)
     }
 
     #[allow(unused)]
@@ -177,8 +177,8 @@ impl TravelProblem {
         goal: ChunkLocation,
     ) -> TravelChunkCenterProblem {
         let heuristic = ChunkHeuristic::new(goal, 1.0);
-        let start_node = MoveNode::simple(start);
+        let start_node = BlockNode::simple(start);
         let goal_checker = CenterChunkGoalCheck::new(goal);
-        DiscreteSearchProblem::new(start_node, heuristic, goal_checker)
+        SearchProblem::new(start_node, heuristic, goal_checker)
     }
 }

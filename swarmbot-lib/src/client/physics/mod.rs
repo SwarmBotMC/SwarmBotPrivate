@@ -6,7 +6,10 @@ use itertools::Itertools;
 use num::traits::Pow;
 
 use crate::{
-    client::{physics::speed::Speed, state::local::inventory::PlayerInventory},
+    client::{
+        pathfind::incremental::Node, physics::speed::Speed,
+        state::local::inventory::PlayerInventory,
+    },
     protocol::Face,
     storage::blocks::WorldBlocks,
     types::{Direction, Displacement, Location},
@@ -28,7 +31,7 @@ const PLAYER_HEIGHT_Y: Displacement = Displacement::new(0., PLAYER_HEIGHT, 0.);
 const UNIT_Y: Displacement = Displacement::new(0., 1., 0.);
 const EPSILON_Y: Displacement = Displacement::new(0., 0.001, 0.);
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Copy, Clone, PartialOrd, PartialEq)]
 struct Pending {
     strafe: Option<Strafe>,
     pub place: Option<BlockPlaced>,
@@ -42,7 +45,8 @@ fn effects_multiplier(speed: f64, slowness: f64) -> f64 {
 }
 
 fn initial_ver(jump_boost: u32) -> f64 {
-    0.1f64.mul_add(f64::from(jump_boost), 0.42)
+    let jump_boost = f64::from(jump_boost);
+    0.1f64.mul_add(jump_boost, 0.42)
 }
 
 fn ver_speed(prev_speed: f64) -> f64 {
@@ -70,7 +74,7 @@ fn air_speed(prev_speed: f64, prev_slip: f64, move_mult: f64) -> f64 {
     momentum + acc
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
 struct MovementState {
     speeds: [f64; 2],
     y_vel: f64,
@@ -89,7 +93,7 @@ impl Default for MovementState {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
 pub struct BlockPlaced {
     pub location: BlockLocation,
     pub face: Face,
@@ -104,7 +108,7 @@ pub struct Actions {
 /// jumping and strafing) and allows polling the resulting player data---for
 /// instance location. # Resources
 /// - [Minecraft Parkour](https://www.mcpk.wiki/wiki/Movement_Formulas)
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Copy, Clone, PartialOrd, PartialEq)]
 pub struct Physics {
     location: Location,
     look: Direction,
@@ -114,14 +118,22 @@ pub struct Physics {
     in_water: bool,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+impl Node for Physics {
+    type Record = Self;
+
+    fn get_record(&self) -> Self::Record {
+        *self
+    }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Hash, PartialOrd)]
 #[allow(unused)]
 pub enum Strafe {
     Left,
     Right,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
 pub enum Line {
     Forward,
     Backward,
@@ -167,7 +179,7 @@ impl Physics {
 
     pub fn look(&mut self, direction: Direction) {
         self.look = direction;
-        self.horizontal = direction.horizontal().unit_vector();
+        self.horizontal = direction.as_horizontal().unit_vector();
     }
 
     pub fn look_at(&mut self, loc: Location) {

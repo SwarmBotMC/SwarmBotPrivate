@@ -28,7 +28,7 @@ pub enum Mine {
 
 /// The face. This is usually used in combination with a block.
 #[repr(u8)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
 #[allow(clippy::missing_docs_in_private_items)]
 pub enum Face {
     NegY,

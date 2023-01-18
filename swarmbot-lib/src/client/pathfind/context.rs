@@ -3,7 +3,13 @@ use std::hash::{Hash, Hasher};
 
 use interfaces::types::BlockLocation;
 
-use crate::{client::pathfind::incremental::Node, storage::blocks::WorldBlocks};
+use crate::{
+    client::{
+        pathfind::incremental::Node,
+        state::{global::GlobalState, local::LocalState},
+    },
+    storage::blocks::WorldBlocks,
+};
 
 /// The costs of doing everything (used for pathfinding)
 #[derive(Clone)]
@@ -65,6 +71,16 @@ impl Default for PathConfig {
 
 /// The global context for path traversal
 #[derive(Copy, Clone)]
+pub struct BotMultithreadedContext<'a> {
+    /// the local state (mutable)
+    pub local: &'a mut LocalState,
+
+    /// the global state (immutable) as it is shared cross-thread
+    pub global: &'a GlobalState,
+}
+
+/// The global context for path traversal
+#[derive(Copy, Clone)]
 pub struct GlobalContext<'a> {
     /// the costs and path configuration values
     pub path_config: &'a PathConfig,
@@ -75,12 +91,12 @@ pub struct GlobalContext<'a> {
 
 /// A node which represents a movement
 #[derive(Debug)]
-pub struct MoveNode {
+pub struct BlockNode {
     /// The current location of the user
     pub location: BlockLocation,
 }
 
-impl MoveNode {
+impl BlockNode {
     /// A simple movement to `location`
     pub const fn simple(location: BlockLocation) -> Self {
         Self { location }
@@ -92,7 +108,7 @@ impl MoveNode {
     }
 }
 
-impl Clone for MoveNode {
+impl Clone for BlockNode {
     fn clone(&self) -> Self {
         Self {
             location: self.location,
@@ -100,18 +116,13 @@ impl Clone for MoveNode {
     }
 }
 
-impl Node for MoveNode {
-    type Record = MoveRecord;
+impl Node for BlockNode {
+    type Record = BlockRecord;
 
     fn get_record(&self) -> Self::Record {
-        let &Self {
-            location,
-            ..
-        } = self;
+        let &Self { location, .. } = self;
 
-        let state = MoveState {
-            location,
-        };
+        let state = MoveState { location };
 
         Self::Record { state }
     }
@@ -123,19 +134,19 @@ pub struct MoveState {
 }
 
 #[derive(Clone, Debug)]
-pub struct MoveRecord {
+pub struct BlockRecord {
     pub state: MoveState,
 }
 
-impl PartialEq for MoveRecord {
+impl PartialEq for BlockRecord {
     fn eq(&self, other: &Self) -> bool {
         self.state.eq(&other.state)
     }
 }
 
-impl Eq for MoveRecord {}
+impl Eq for BlockRecord {}
 
-impl Hash for MoveRecord {
+impl Hash for BlockRecord {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.state.hash(state);
     }

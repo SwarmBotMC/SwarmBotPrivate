@@ -2,12 +2,12 @@
 
 use std::fmt::{Debug, Formatter};
 
-use crate::client::pathfind::context::MoveNode;
+use crate::client::pathfind::context::BlockNode;
 
 /// a heuristic we can use for path finding.
 ///
 /// - It must follow A* heuristic requirements
-pub trait Heuristic<T = MoveNode> {
+pub trait Heuristic<T = BlockNode> {
     /// Given an input return a heuristic
     fn heuristic(&self, input: &T) -> f64;
 }
@@ -50,13 +50,13 @@ impl<T: Debug> Debug for Progression<T> {
 /// A [`Progressor`] is a trait which can given an input find a path
 ///
 /// A [`Progressor`] generally has a notion of a goal built into it
-pub trait Progressor<T = MoveNode> {
+pub trait Progressor<T = BlockNode> {
     /// find progressions towards a goal given an `input`
     fn progressions(&self, input: &T) -> Progression<T>;
 }
 
 /// The ability to tell whether a node is a goal node or not
-pub trait GoalCheck<T = MoveNode> {
+pub trait GoalCheck<T = BlockNode> {
     /// determine if `input` is a goal
     fn is_goal(&self, input: &T) -> bool;
 }

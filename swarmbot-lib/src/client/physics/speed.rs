@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone, Hash, Ord, PartialOrd, Eq)]
 pub struct Speed {
     multiplier: f64,
 }

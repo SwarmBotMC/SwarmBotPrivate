@@ -6,7 +6,7 @@ use crate::{
         state::{global::GlobalState, local::LocalState},
         tasks::{
             compound::CompoundTask, delay::DelayTask, hit_entity::HitEntityTask,
-            navigate::NavigateProblem, stream::TaskStream, Task,
+            navigate::PerBlockNavigationSystem, stream::TaskStream, Task,
         },
     },
     protocol::InterfaceOut,
@@ -55,7 +55,7 @@ impl TaskStream for AttackEntity {
                 THRESHOLD_DIST_SMALLER * THRESHOLD_DIST_SMALLER,
                 false,
             );
-            let task = NavigateProblem::from(travel);
+            let task = PerBlockNavigationSystem::from(travel);
 
             Some(task.into())
         }

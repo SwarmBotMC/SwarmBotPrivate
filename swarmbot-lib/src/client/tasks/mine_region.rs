@@ -3,7 +3,7 @@ use crate::{
         pathfind::implementations::no_vehicle::TravelProblem,
         state::{global::GlobalState, local::LocalState},
         tasks::{
-            compound::CompoundTask, lazy::LazyTask, navigate::NavigateProblem,
+            compound::CompoundTask, lazy::LazyTask, navigate::PerBlockNavigationSystem,
             safe_mine_coord::SafeMineRegion, stream::TaskStream, Task,
         },
     },
@@ -24,7 +24,7 @@ impl TaskStream for MineRegion {
 
         let mut compound = CompoundTask::default();
         let problem = TravelProblem::navigate_near_block(start.into(), goal, 0.0, false);
-        let nav = NavigateProblem::from(problem);
+        let nav = PerBlockNavigationSystem::from(problem);
 
         compound.add(nav).add(LazyTask::from(SafeMineRegion));
 

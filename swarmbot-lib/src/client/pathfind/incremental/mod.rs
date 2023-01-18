@@ -5,7 +5,6 @@
 use std::{
     collections::{BinaryHeap, HashMap},
     fmt::{Debug, Formatter},
-    hash::Hash,
     time::Instant,
 };
 
@@ -22,7 +21,7 @@ const COEFFICIENTS: [f64; 7] = [1.5, 2.0, 2.5, 3., 4., 5., 10.];
 const MIN_DIST: f64 = 5.0;
 
 /// An A-star Node
-pub trait Node: Clone {
+pub trait Node: Clone  {
     /// # Purpose
     /// Sometimes nodes are very memory expensive. To reduce this only open
     /// nodes need to contain full state. Records can instead store a hash
@@ -42,13 +41,13 @@ pub trait Node: Clone {
     /// open set we will probably want to have some type of [`HashSet`] or
     /// [`HashMap`].
     ///
-    /// ```
+    /// ```text
     /// For any node pair (Node_a, Node_b)
     /// and any records (Record_a, Record_b)
     /// Node_a == Node_b => Record_a == Record_b
     /// Node_a != Node_b => Record_a != Record_b
     /// ```
-    type Record: PartialEq + Hash + Eq + Clone;
+    type Record: PartialEq + Clone + Send + Sync;
 
     /// Takes the node and turns it into a record see [`Self::Record`]
     fn get_record(&self) -> Self::Record;

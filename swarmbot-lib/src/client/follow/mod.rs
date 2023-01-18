@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use crate::{
     client::{
-        pathfind::{context::MoveRecord, incremental::PathResult},
+        pathfind::{context::BlockRecord, incremental::PathResult},
         physics::{speed::Speed, Line},
         state::{global::GlobalState, local::LocalState},
     },
@@ -66,7 +66,7 @@ pub enum Result {
 /// did not have a factor to counter the velocity going _away_ from the
 /// current target.
 #[derive(Debug)]
-pub struct Follower {
+pub struct BlockFollower {
     /// the locations we still need to reach
     xs: VecDeque<Location>,
 
@@ -85,10 +85,37 @@ pub struct Follower {
     should_recalculate: bool,
 }
 
-impl Follower {
-    /// Create a new [`Follower`]. If the `path_result` is empty, we will return
-    /// [`None`]
-    pub fn new(path_result: PathResult<MoveRecord>) -> Option<Self> {
+pub trait Follower: Sized {
+    type Node;
+
+    /// Create a new [`Self`]. If the `path_result` is empty, we will
+    /// return [`None`]
+    fn new(path_result: PathResult<Self::Node>) -> Option<Self>;
+
+    /// attempt to merge the current path with another path result.
+    ///
+    /// This can be done when we are using an incremental on-the-fly version of
+    /// A* and we want to merge two path results.
+    fn merge(&mut self, other: PathResult<Self::Node>);
+
+    /// if we should recalculate the path
+    fn should_recalc(&mut self) -> bool;
+
+    /// an iteration where we attempt to stay on the given path
+    fn follow_iteration(&mut self, local: &mut LocalState, _global: &mut GlobalState) -> Result;
+}
+
+impl BlockFollower {
+    /// go to the next point on the path
+    fn next(&mut self) {
+        self.xs.pop_front();
+        self.ticks = 0;
+    }
+}
+impl Follower for BlockFollower {
+    type Node = BlockRecord;
+
+    fn new(path_result: PathResult<BlockRecord>) -> Option<Self> {
         let path = path_result.value;
         if path.is_empty() {
             return None;
@@ -112,15 +139,10 @@ impl Follower {
         })
     }
 
-    /// attempt to merge the current path with another path result.
-    ///
-    /// This can be done when we are using an incremental on-the-fly version of
-    /// A* and we want to merge two path results.
-    ///
     /// The merging is done by finding a path where two blocks touch each other.
     /// If there are no blocks that are shared between the current path and
     /// the calculate path the paths are not merged
-    pub fn merge(&mut self, result: PathResult<MoveRecord>) {
+    fn merge(&mut self, result: PathResult<BlockRecord>) {
         /// the number of iterators until we fail the merge task. Generally, the
         /// re-calculate path should not take a long time to compute, so
         /// this number can be fairly small.
@@ -161,14 +183,8 @@ impl Follower {
         *self = other;
     }
 
-    /// go to the next point on the path
-    fn next(&mut self) {
-        self.xs.pop_front();
-        self.ticks = 0;
-    }
-
     /// if we should recalculate the path
-    pub fn should_recalc(&mut self) -> bool {
+    fn should_recalc(&mut self) -> bool {
         // we should only recalc if this is not complete
         if self.complete {
             return false;
@@ -178,11 +194,7 @@ impl Follower {
     }
 
     /// an iteration where we attempt to stay on the given path
-    pub fn follow_iteration(
-        &mut self,
-        local: &mut LocalState,
-        _global: &mut GlobalState,
-    ) -> Result {
+    fn follow_iteration(&mut self, local: &mut LocalState, _global: &mut GlobalState) -> Result {
         // We only want to recalculate if we are on the ground to prevent issues with
         // the pathfinder thinking we are one block higher. We do this if the
         // path is incomplete and we have gone through at least half of the
@@ -250,7 +262,7 @@ impl Follower {
         ///
         /// Suppose this player is you trying to get to the block `[]` and the
         /// current velocity is in the direction of `/`
-        /// ```
+        /// ```text
         ///          /
         ///         o
         ///        \|/    ------->   []
@@ -260,7 +272,7 @@ impl Follower {
         /// If [`VELOCITY_IMPORTANCE`] is 0, the player will look directly at
         /// the block
         ///
-        /// ```
+        /// ```text
         /// 
         ///         o ----
         ///        \|/    ------->   []
@@ -272,7 +284,7 @@ impl Follower {
         /// will actually hit the block. For instance, with `1.5` the
         /// player might reach
         ///
-        /// ```
+        /// ```text
         /// 
         ///          o
         ///        \|/ \   ------->   []
@@ -341,7 +353,7 @@ mod tests {
 
     use crate::{
         client::{
-            follow::{Follower, Result},
+            follow::{BlockFollower, Follower, Result},
             pathfind::implementations::{no_vehicle::TravelProblem, Problem},
             state::{
                 global::GlobalState,
@@ -400,7 +412,7 @@ mod tests {
 
         assert!(result.complete);
 
-        let mut follower = Follower::new(result).context("could not create a follower")?;
+        let mut follower = BlockFollower::new(result).context("could not create a follower")?;
 
         local_state.physics.teleport(start.center_bottom());
 
@@ -473,10 +485,14 @@ mod tests {
                 loc
             };
 
-            assert_eq!(global_state.blocks.get_block_simple(below), Some(SimpleType::Solid), "block in path at {loc} is walkthrough");
+            assert_eq!(
+                global_state.blocks.get_block_simple(below),
+                Some(SimpleType::Solid),
+                "block in path at {loc} is walkthrough"
+            );
         }
 
-        let mut follower = Follower::new(result).unwrap();
+        let mut follower = BlockFollower::new(result).unwrap();
 
         local_state.physics.teleport(start.center_bottom());
 
